@@ -30,11 +30,11 @@ defmodule COSE.Messages.Mac0 do
   end
 
   def verify_decode(encoded_msg, alg, key, external_aad \\ <<>>) do
-    msg = decode(encoded_msg)
-
-    case verify(msg, alg, key, external_aad) do
-      true -> {:ok, msg}
-      false -> {:error, :integrity_check_failed}
+    with {:ok, msg} <- decode(encoded_msg) do
+      case verify(msg, alg, key, external_aad) do
+        true -> {:ok, msg}
+        false -> {:error, :integrity_check_failed}
+      end
     end
   end
 
@@ -56,17 +56,21 @@ defmodule COSE.Messages.Mac0 do
   end
 
   def decode(encoded_msg) do
-    {:ok, %CBOR.Tag{tag: 17, value: [phdr, uhdr, payload_tag, tag]}, _} =
-      CBOR.decode(encoded_msg)
+    with {:ok, %CBOR.Tag{tag: 17, value: [phdr, uhdr, payload_tag, tag]}, _} <-
+           CBOR.decode(encoded_msg),
+         %CBOR.Tag{tag: :bytes, value: payload} <- payload_tag do
+      decoded =
+        %__MODULE__{
+          phdr: COSE.Headers.decode_phdr(phdr),
+          uhdr: COSE.Headers.translate(uhdr),
+          payload: payload,
+          tag: tag
+        }
 
-    %CBOR.Tag{tag: :bytes, value: payload} = payload_tag
-
-    %__MODULE__{
-      phdr: COSE.Headers.decode_phdr(phdr),
-      uhdr: COSE.Headers.translate(uhdr),
-      payload: payload,
-      tag: tag
-    }
+      {:ok, decoded}
+    else
+      _ -> :error
+    end
   end
 
   def mac_structure(msg, external_aad \\ <<>>) do
