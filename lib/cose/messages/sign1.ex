@@ -1,4 +1,6 @@
 defmodule COSE.Messages.Sign1 do
+  alias COSE.Keys
+
   defstruct [:phdr, :uhdr, :payload, :signature]
 
   @spec build(binary, map, map) :: map
@@ -24,7 +26,7 @@ defmodule COSE.Messages.Sign1 do
 
     %__MODULE__{
       msg
-      | signature: COSE.Keys.OKP.sign(to_be_signed, key)
+      | signature: Keys.sign(key, to_be_signed)
     }
   end
 
@@ -52,8 +54,9 @@ defmodule COSE.Messages.Sign1 do
 
   def verify(msg, ver_key, external_aad \\ <<>>) do
     to_be_verified = CBOR.encode(sig_structure(msg, external_aad))
+    %CBOR.Tag{tag: :bytes, value: signature} = msg.signature
 
-    if COSE.Keys.OKP.verify(to_be_verified, msg.signature, ver_key) do
+    if Keys.verify(ver_key, to_be_verified, signature) do
       msg
     else
       false
