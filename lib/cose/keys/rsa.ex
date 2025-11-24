@@ -1,5 +1,5 @@
 defmodule COSE.Keys.RSA do
-  defstruct [:kty, :kid, :alg, :key_ops, :base_iv, :n, :e, :d, :p, :q, :dp, :dq, :qi]
+  defstruct [:kty, :kid, :alg, :key_ops, :base_iv, :pem_record, :n, :e, :d, :p, :q, :dp, :dq, :qi]
 
   @public_exponent 65_537
 
@@ -31,8 +31,34 @@ defmodule COSE.Keys.RSA do
     }
   end
 
+  def from_record(pem_record) do
+    {:RSAPrivateKey, _, n, e, d, p, q, dp, dq, qi, _} = pem_record
+
+    alg =
+      case modulus_bits(n) do
+        2048 -> :rs256
+        3072 -> :rs384
+      end
+
+    %__MODULE__{
+      kty: :rsa,
+      alg: alg,
+      pem_record: pem_record,
+      n: :binary.encode_unsigned(n),
+      e: :binary.encode_unsigned(e),
+      d: :binary.encode_unsigned(d),
+      p: :binary.encode_unsigned(p),
+      q: :binary.encode_unsigned(q),
+      dp: :binary.encode_unsigned(dp),
+      dq: :binary.encode_unsigned(dq),
+      qi: :binary.encode_unsigned(qi)
+    }
+  end
+
   defp bits(:rs256), do: 2048
   defp bits(:rs384), do: 3072
+
+  defp modulus_bits(modulus), do: modulus |> :binary.encode_unsigned() |> bit_size()
 
   def digest_type(key) do
     case key.alg do

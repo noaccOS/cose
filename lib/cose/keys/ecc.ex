@@ -1,5 +1,5 @@
 defmodule COSE.Keys.ECC do
-  defstruct [:kty, :kid, :alg, :key_ops, :base_iv, :crv, :x, :y, :d]
+  defstruct [:kty, :kid, :alg, :key_ops, :base_iv, :pem_record, :crv, :x, :y, :d]
 
   @doc """
   Generates a key for the specified algorithm.
@@ -21,6 +21,39 @@ defmodule COSE.Keys.ECC do
     }
   end
 
+  def from_record(pem_record) do
+    {:ECPrivateKey, _, priv_d, {:namedCurve, oid}, pub_bits, _} = pem_record
+
+    alg = get_alg_from_oid(oid)
+    {curve_erl, cose_crv, key_len} = get_curve_info(alg)
+
+    final_pub =
+      case pub_bits do
+        :undefined ->
+          {pub, _} = :crypto.generate_key(:ecdh, curve_erl, priv_d)
+          pub
+
+        val ->
+          bitstring_to_binary(val)
+      end
+
+    case final_pub do
+      <<4, x::binary-size(key_len), y::binary-size(key_len)>> ->
+        %__MODULE__{
+          kty: :ecc,
+          crv: cose_crv,
+          alg: alg,
+          pem_record: pem_record,
+          x: x,
+          y: y,
+          d: priv_d
+        }
+
+      _ ->
+        raise "Compressed EC keys are not supported"
+    end
+  end
+
   def digest_type(key) do
     case key.alg do
       :es256 -> :sha256
@@ -39,8 +72,20 @@ defmodule COSE.Keys.ECC do
     <<4, key.x::binary, key.y::binary>>
   end
 
+  defp get_alg_from_oid({1, 2, 840, 10045, 3, 1, 7}), do: :es256
+  defp get_alg_from_oid({1, 3, 132, 0, 34}), do: :es384
+
   defp get_curve_info(:es256), do: {:prime256v1, :p256, 32}
   defp get_curve_info(:es384), do: {:secp384r1, :p384, 48}
+
+  defp bitstring_to_binary(val) when is_binary(val), do: val
+
+  defp bitstring_to_binary(val) when is_bitstring(val) do
+    size = bit_size(val)
+    <<bin::binary-size(div(size, 8)), _::bitstring>> = val
+
+    bin
+  end
 end
 
 defimpl COSE.Keys.Key, for: COSE.Keys.ECC do
