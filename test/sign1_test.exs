@@ -13,9 +13,10 @@ defmodule COSETest.Sign1 do
       okp_key = Map.put(okp_key, :d, d) |> Map.put(:x, x)
 
       ecc_key = Keys.ECC.generate(:es256)
+      rsa_key = Keys.RSA.generate(:rs384)
 
       msg = Sign1.build("content to sign", %{alg: :eddsa})
-      {:ok, %{okp_key: okp_key, ecc_key: eccckey, msg: msg}}
+      {:ok, %{okp_key: okp_key, ecc_key: ecc_key, rsa_key: rsa_key, msg: msg}}
     end
 
     test "sign with okp", %{okp_key: key, msg: msg} do
@@ -40,6 +41,17 @@ defmodule COSETest.Sign1 do
       refute Sign1.verify(altered_msg, key)
     end
 
+    test "sign with rsa", %{rsa_key: key, msg: msg} do
+      msg = Sign1.sign(msg, key)
+      assert Sign1.verify(msg, key)
+
+      # alter signature
+      <<_::binary-size(3)>> <> tmp = msg.signature.value
+      altered_signature = "aaa" <> tmp
+      altered_msg = Map.put(msg, :signature, COSE.tag_as_byte(altered_signature))
+      refute Sign1.verify(altered_msg, key)
+    end
+
     test "encode with okp", %{okp_key: key, msg: msg} do
       encoded_msg = Sign1.sign_encode(msg, key)
       verified_msg = Messages.Sign1.verify_decode(encoded_msg, key)
@@ -53,6 +65,12 @@ defmodule COSETest.Sign1 do
       # signature could be different
       fields = [:payload, :phdr, :uhdr]
       assert Map.take(verified_msg, fields) == Sign1.sign(msg, key) |> Map.take(fields)
+    end
+
+    test "encode with rsa", %{rsa_key: key, msg: msg} do
+      encoded_msg = Sign1.sign_encode(msg, key)
+      verified_msg = Messages.Sign1.verify_decode(encoded_msg, key)
+      assert verified_msg == Sign1.sign(msg, key)
     end
   end
 end
