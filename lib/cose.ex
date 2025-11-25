@@ -21,7 +21,12 @@ defmodule COSE do
     direct: -6,
     aes_ccm_16_64_128: 10,
     ecdh_ss_hkdf_256: -27,
-    eddsa: -8
+    eddsa: -8,
+    es256: -7,
+    es384: -35,
+    es512: -36,
+    rs256: -257,
+    rs384: -258
   }
   def algorithm(alg) when is_atom(alg), do: @cose_algs[alg]
   def algorithm(alg) when is_integer(alg), do: invert_map(@cose_algs)[alg]
