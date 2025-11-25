@@ -14,7 +14,7 @@ defmodule COSE.Messages.Encrypt0 do
   def encrypt_encode(msg, cipher_suite, key, iv) do
     msg
     |> encrypt(cipher_suite, key, iv)
-    |> encode()
+    |> encode_cbor()
   end
 
   def encrypt(msg, cipher_suite, key, iv, external_aad \\ <<>>) do
@@ -26,6 +26,11 @@ defmodule COSE.Messages.Encrypt0 do
     Map.put(msg, :ciphertext, COSE.tag_as_byte(encrypted <> tag))
   end
 
+  def encode_cbor(msg) do
+    encode(msg)
+    |> CBOR.encode()
+  end
+
   def encode(msg) do
     cose_values = [
       COSE.Headers.tag_phdr(msg.phdr),
@@ -33,11 +38,11 @@ defmodule COSE.Messages.Encrypt0 do
       msg.ciphertext
     ]
 
-    CBOR.encode(%CBOR.Tag{tag: 16, value: cose_values})
+    %CBOR.Tag{tag: 16, value: cose_values}
   end
 
   def decrypt_decode(msg_cbor, cipher_suite, key) do
-    with {:ok, msg} <- decode(msg_cbor) do
+    with {:ok, msg} <- decode_cbor(msg_cbor) do
       decrypt(msg, cipher_suite, key, msg.uhdr.iv.value)
     end
   end
@@ -56,16 +61,26 @@ defmodule COSE.Messages.Encrypt0 do
     end
   end
 
-  def decode(encoded_msg) do
-    with {:ok, %CBOR.Tag{tag: 16, value: [phdr, uhdr, ciphertext]}, _} <- CBOR.decode(encoded_msg) do
-      decoded =
-        %__MODULE__{
-          phdr: COSE.Headers.decode_phdr(phdr),
-          uhdr: COSE.Headers.translate(uhdr),
-          ciphertext: ciphertext
-        }
+  def decode_cbor(encoded_msg) do
+    with {:ok, decoded, _} <- CBOR.decode(encoded_msg) do
+      decode(decoded)
+    end
+  end
 
-      {:ok, decoded}
+  def decode(msg) do
+    case msg do
+      %CBOR.Tag{tag: 16, value: [phdr, uhdr, ciphertext]} ->
+        decoded =
+          %__MODULE__{
+            phdr: COSE.Headers.decode_phdr(phdr),
+            uhdr: COSE.Headers.translate(uhdr),
+            ciphertext: ciphertext
+          }
+
+        {:ok, decoded}
+
+      _ ->
+        :error
     end
   end
 
