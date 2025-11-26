@@ -37,8 +37,9 @@ defmodule COSE.Messages.Encrypt0 do
   end
 
   def decrypt_decode(msg_cbor, cipher_suite, key) do
-    msg = decode(msg_cbor)
-    decrypt(msg, cipher_suite, key, msg.uhdr.iv.value)
+    with {:ok, msg} <- decode(msg_cbor) do
+      decrypt(msg, cipher_suite, key, msg.uhdr.iv.value)
+    end
   end
 
   def decrypt(msg, cipher_suite, key, iv, external_aad \\ <<>>) do
@@ -56,14 +57,16 @@ defmodule COSE.Messages.Encrypt0 do
   end
 
   def decode(encoded_msg) do
-    {:ok, %CBOR.Tag{tag: 16, value: [phdr, uhdr, ciphertext]}, _} =
-      CBOR.decode(encoded_msg)
+    with {:ok, %CBOR.Tag{tag: 16, value: [phdr, uhdr, ciphertext]}, _} <- CBOR.decode(encoded_msg) do
+      decoded =
+        %__MODULE__{
+          phdr: COSE.Headers.decode_phdr(phdr),
+          uhdr: COSE.Headers.translate(uhdr),
+          ciphertext: ciphertext
+        }
 
-    %__MODULE__{
-      phdr: COSE.Headers.decode_phdr(phdr),
-      uhdr: COSE.Headers.translate(uhdr),
-      ciphertext: ciphertext
-    }
+      {:ok, decoded}
+    end
   end
 
   def enc_structure(msg, external_aad \\ <<>>) do

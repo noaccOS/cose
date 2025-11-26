@@ -31,25 +31,30 @@ defmodule COSE.Messages.Sign1 do
   end
 
   def verify_decode(encoded_msg, key) do
-    msg = decode(encoded_msg)
-
-    if verify(msg, key) do
-      msg
-    else
-      false
+    with {:ok, msg} <- decode(encoded_msg) do
+      if verify(msg, key) do
+        {:ok, msg}
+      else
+        :error
+      end
     end
   end
 
   def decode(encoded_msg) do
-    {:ok, %CBOR.Tag{tag: 18, value: [phdr, uhdr, payload, signature]}, _} =
-      CBOR.decode(encoded_msg)
+    case CBOR.decode(encoded_msg) do
+      {:ok, %CBOR.Tag{tag: 18, value: [phdr, uhdr, payload, signature]}, _} ->
+        decoded = %__MODULE__{
+          phdr: COSE.Headers.decode_phdr(phdr),
+          uhdr: uhdr,
+          payload: payload,
+          signature: signature
+        }
 
-    %__MODULE__{
-      phdr: COSE.Headers.decode_phdr(phdr),
-      uhdr: uhdr,
-      payload: payload,
-      signature: signature
-    }
+        {:ok, decoded}
+
+      _ ->
+        :error
+    end
   end
 
   def verify(msg, ver_key, external_aad \\ <<>>) do
