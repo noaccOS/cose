@@ -18,7 +18,12 @@ defmodule COSE.Messages.Sign1 do
       msg.signature
     ]
 
-    CBOR.encode(%CBOR.Tag{tag: 18, value: value})
+    %CBOR.Tag{tag: 18, value: value}
+  end
+
+  def sign_encode_cbor(msg, key) do
+    sign_encode(msg, key)
+    |> CBOR.encode()
   end
 
   def sign(msg, key, external_aad \\ <<>>) do
@@ -31,7 +36,7 @@ defmodule COSE.Messages.Sign1 do
   end
 
   def verify_decode(encoded_msg, key) do
-    with {:ok, msg} <- decode(encoded_msg) do
+    with {:ok, msg} <- decode_cbor(encoded_msg) do
       if verify(msg, key) do
         {:ok, msg}
       else
@@ -40,17 +45,24 @@ defmodule COSE.Messages.Sign1 do
     end
   end
 
-  def decode(encoded_msg) do
-    case CBOR.decode(encoded_msg) do
-      {:ok, %CBOR.Tag{tag: 18, value: [phdr, uhdr, payload, signature]}, _} ->
-        decoded = %__MODULE__{
-          phdr: COSE.Headers.decode_phdr(phdr),
-          uhdr: uhdr,
-          payload: payload,
-          signature: signature
-        }
+  def decode_cbor(encoded_msg) do
+    with {:ok, decoded, _} <- CBOR.decode(encoded_msg) do
+      decode(decoded)
+    end
+  end
 
-        {:ok, decoded}
+  def decode(msg) do
+    case msg do
+      %CBOR.Tag{tag: 18, value: [phdr, uhdr, payload, signature]} ->
+        msg =
+          %__MODULE__{
+            phdr: COSE.Headers.decode_phdr(phdr),
+            uhdr: uhdr,
+            payload: payload,
+            signature: signature
+          }
+
+        {:ok, msg}
 
       _ ->
         :error

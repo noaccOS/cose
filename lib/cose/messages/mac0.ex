@@ -44,7 +44,7 @@ defmodule COSE.Messages.Mac0 do
     compare(computed_msg.tag.value, msg.tag.value)
   end
 
-  def encode(msg) do
+  def to_message(msg) do
     cose_values = [
       COSE.Headers.tag_phdr(msg.phdr),
       COSE.Headers.translate(msg.uhdr),
@@ -52,12 +52,22 @@ defmodule COSE.Messages.Mac0 do
       msg.tag
     ]
 
-    CBOR.encode(%CBOR.Tag{tag: 17, value: cose_values})
+    %CBOR.Tag{tag: 17, value: cose_values}
+  end
+
+  def encode(msg) do
+    to_message(msg)
+    |> CBOR.encode()
   end
 
   def decode(encoded_msg) do
-    with {:ok, %CBOR.Tag{tag: 17, value: [phdr, uhdr, payload_tag, tag]}, _} <-
-           CBOR.decode(encoded_msg),
+    with {:ok, decoded, _} <- CBOR.decode(encoded_msg) do
+      from_message(decoded)
+    end
+  end
+
+  def from_message(msg) do
+    with %CBOR.Tag{tag: 17, value: [phdr, uhdr, payload_tag, tag]} <- msg,
          %CBOR.Tag{tag: :bytes, value: payload} <- payload_tag do
       decoded =
         %__MODULE__{
