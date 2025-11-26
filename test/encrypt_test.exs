@@ -19,7 +19,11 @@ defmodule COSETest.Encrypt do
       context = ContextKDF.build(:aes_ccm_16_64_128, %PartyInfo{}, %PartyInfo{}, s)
 
       msg_phdr = %{alg: :aes_ccm_16_64_128}
-      msg_uhdr = %{iv: COSE.tag_as_byte(<<222, 100, 52, 107, 249, 208, 239, 101, 73, 73, 196, 224>>)}
+
+      msg_uhdr = %{
+        iv: COSE.tag_as_byte(<<222, 100, 52, 107, 249, 208, 239, 101, 73, 73, 196, 224>>)
+      }
+
       msg = Encrypt.build("content to encrypt", recipient, msg_phdr, msg_uhdr)
 
       {:ok,

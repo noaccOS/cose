@@ -34,6 +34,7 @@ defmodule COSE.Messages.Encrypt do
       msg.ciphertext,
       COSE.Messages.Recipient.encode_many(msg.recipients)
     ]
+
     CBOR.encode(%CBOR.Tag{tag: 96, value: cose_values})
   end
 

@@ -1,7 +1,3 @@
-defmodule COSE.Keys.Symmetric do
-  defstruct [:kty, :kid, :alg, :key_ops, :base_iv, :k]
-end
-
 defmodule COSE.Keys.OKP do
   defstruct [:kty, :kid, :alg, :key_ops, :base_iv, :crv, :x, :d]
 
@@ -26,13 +22,15 @@ defmodule COSE.Keys.OKP do
       d: d
     }
   end
+end
 
-  def sign(to_be_signed, key) do
+defimpl COSE.Keys.Key, for: COSE.Keys.OKP do
+  def sign(key, to_be_signed) do
     :crypto.sign(:eddsa, :sha256, to_be_signed, [key.d, :ed25519])
     |> COSE.tag_as_byte()
   end
 
-  def verify(to_be_verified, %CBOR.Tag{tag: :bytes, value: signature}, ver_key) do
+  def verify(ver_key, to_be_verified, signature) do
     :crypto.verify(:eddsa, :sha256, to_be_verified, signature, [ver_key.x, :ed25519])
   end
 end
