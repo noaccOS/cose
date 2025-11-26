@@ -14,17 +14,26 @@ defmodule COSE do
     x25519: 4,
     ed25519: 6
   }
-  def curve(crv) when is_atom(crv), do: @cose_curves[crv]
-  def curve(crv) when is_integer(crv), do: invert_map(@cose_curves)[crv]
+
+  def curve(crv), do: Map.get(@cose_curves, crv, crv)
+
+  def curve_from_id(id), do: Map.get(invert_map(@cose_curves), id, id)
 
   @cose_algs %{
     direct: -6,
     aes_ccm_16_64_128: 10,
     ecdh_ss_hkdf_256: -27,
-    eddsa: -8
+    eddsa: -8,
+    es256: -7,
+    es384: -35,
+    es512: -36,
+    rs256: -257,
+    rs384: -258
   }
-  def algorithm(alg) when is_atom(alg), do: @cose_algs[alg]
-  def algorithm(alg) when is_integer(alg), do: invert_map(@cose_algs)[alg]
+
+  def algorithm(alg), do: Map.get(@cose_algs, alg, alg)
+
+  def algorithm_from_id(id), do: Map.get(invert_map(@cose_algs), id, id)
 
   @cose_headers %{
     alg: 1,
@@ -32,8 +41,10 @@ defmodule COSE do
     iv: 5,
     party_v_identity: -24
   }
-  def header(hdr) when is_atom(hdr), do: @cose_headers[hdr]
-  def header(hdr) when is_integer(hdr), do: invert_map(@cose_headers)[hdr]
+
+  def header(hdr), do: Map.get(@cose_headers, hdr, hdr)
+
+  def header_from_id(id), do: Map.get(invert_map(@cose_headers), id, id)
 
   def invert_map(a_map) do
     Enum.map(a_map, fn {key, value} -> {value, key} end) |> Enum.into(%{})

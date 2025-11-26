@@ -44,7 +44,7 @@ defmodule COSETest.Encrypt do
 
       context = ContextKDF.build(:aes_ccm_16_64_128, %PartyInfo{nonce: <<1>>}, %PartyInfo{}, s)
 
-      alg = COSE.algorithm(:aes_ccm_16_64_128)
+      alg = COSE.algorithm_from_id(:aes_ccm_16_64_128)
 
       assert [^alg, [nil, <<1>>, nil], [nil, nil, nil], [128, %CBOR.Tag{}]] =
                ContextKDF.encode(context)
