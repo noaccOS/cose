@@ -21,7 +21,7 @@ defmodule COSE.Messages.Encrypt0 do
     aad = msg |> enc_structure(external_aad) |> CBOR.encode()
 
     {encrypted, tag} =
-      :crypto.crypto_one_time_aead(cipher_suite, key.k, iv, msg.payload, aad, 8, true)
+      :crypto.crypto_one_time_aead(cipher_suite, key.k, iv, msg.payload, aad, 16, true)
 
     Map.put(msg, :ciphertext, COSE.tag_as_byte(encrypted <> tag))
   end
@@ -91,7 +91,7 @@ defmodule COSE.Messages.Encrypt0 do
     ]
   end
 
-  def split_encrypted_tag(ciphertext, tag_len \\ 8) do
+  def split_encrypted_tag(ciphertext, tag_len \\ 16) do
     encrypted_len = byte_size(ciphertext) - tag_len
     <<encrypted::binary-size(encrypted_len), tag::binary-size(tag_len)>> = ciphertext
     {encrypted, tag}
